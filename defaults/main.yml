@@ -1,1 +1,4 @@
 ---
+
+apt_cache_valid_time: 600
+github_gpg_key: /usr/share/keyrings/github-archive-keyring.gpg

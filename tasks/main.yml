@@ -1,1 +1,52 @@
 ---
+
+- name: Install required system packages
+  become: true
+  ansible.builtin.apt:
+    state: present
+    cache_valid_time: "{{ apt_cache_valid_time }}"
+    name:
+      - curl
+
+- name: Add github repo
+  become: true
+  block:
+    - name: github | get the key  # noqa command-instead-of-module
+      ansible.builtin.shell: curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor --output {{ github_gpg_key }}
+      args:
+        creates: "{{ github_gpg_key }}"
+
+    - name: get arch
+      ansible.builtin.command: dpkg --print-architecture
+      register: dpkg_arch_shell
+      changed_when: false
+
+    - name: set arch fact
+      ansible.builtin.set_fact:
+        dpkg_arch: "{{ dpkg_arch_shell.stdout }}"
+
+    - name: github | apt source
+      ansible.builtin.apt_repository:
+        repo: "deb [arch={{ dpkg_arch }} signed-by={{ github_gpg_key }}] https://cli.github.com/packages stable main"
+        update_cache: true
+        state: present
+
+- name: Install GitHub CLI
+  become: true
+  ansible.builtin.apt:
+    state: present
+    cache_valid_time: "{{ apt_cache_valid_time }}"
+    name:
+      - gh
+
+- name: Check install
+  block:
+    - name: Stat the binary
+      ansible.builtin.stat:
+        path: /usr/bin/gh
+      register: gh_binary
+
+    - name: Ensure binary exists
+      ansible.builtin.assert:
+        that:
+          - gh_binary.stat.isreg
